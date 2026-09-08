@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Today — To-do</title>
+  <meta name="description" content="A clean single-page to-do list. Tasks are saved in your browser." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper: #eef1f5;
+      --surface: #ffffff;
+      --ink: #14202b;
+      --ink-soft: #4b5a6a;
+      --muted: #8593a2;
+      --line: #d9dfe6;
+      --accent: #2451b3;
+      --accent-soft: #e3eafc;
+      --danger: #b3382d;
+      --radius: 14px;
+      --shadow: 0 1px 2px rgba(20, 32, 43, 0.06), 0 12px 32px -16px rgba(20, 32, 43, 0.18);
+      --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; padding: 0; }
+
+    body {
+      font-family: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      color: var(--ink);
+      background: var(--paper);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    main {
+      width: min(100% - 2.5rem, 620px);
+      margin: 0 auto;
+      padding: clamp(2.5rem, 7vw, 5rem) 0 3rem;
+      flex: 1;
+    }
+
+    /* Header: the count is the headline */
+    .head { margin-bottom: 1.75rem; }
+
+    .head .date {
+      margin: 0 0 0.35rem;
+      color: var(--muted);
+      font-size: 0.9375rem;
+      font-weight: 500;
+    }
+
+    .head h1 {
+      margin: 0;
+      font-size: clamp(2rem, 6vw, 2.75rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* The entry field is the one bold element */
+    .entry {
+      position: relative;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1.5px solid transparent;
+      transition: border-color 160ms var(--ease), box-shadow 160ms var(--ease);
+    }
+
+    .entry:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow);
+    }
+
+    .entry input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      font: inherit;
+      font-size: 1.125rem;
+      color: var(--ink);
+      padding: 1.1rem 6.5rem 1.1rem 1.25rem;
+      border-radius: var(--radius);
+    }
+
+    .entry input::placeholder { color: var(--muted); }
+
+    .entry button {
+      position: absolute;
+      right: 0.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 0;
+      background: var(--accent);
+      color: #fff;
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.9375rem;
+      padding: 0.6rem 1rem;
+      border-radius: 10px;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms var(--ease), transform 160ms var(--ease);
+    }
+
+    .entry.has-text button {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .entry button:hover { background: #1c418f; }
+
+    /* Toolbar */
+    .bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin: 1.75rem 0 0.5rem;
+      padding: 0 0.25rem;
+      font-size: 0.9375rem;
+    }
+
+    .filters {
+      display: flex;
+      gap: 0.25rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .filters button {
+      border: 0;
+      background: transparent;
+      font: inherit;
+      font-weight: 500;
+      color: var(--ink-soft);
+      padding: 0.35rem 0.7rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .filters button[aria-pressed="true"] {
+      background: var(--surface);
+      color: var(--ink);
+      box-shadow: 0 1px 2px rgba(20, 32, 43, 0.08);
+    }
+
+    .clear {
+      border: 0;
+      background: transparent;
+      font: inherit;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0.35rem 0.5rem;
+      border-radius: 8px;
+    }
+
+    .clear:hover { color: var(--danger); }
+    .clear[hidden] { display: none; }
+
+    /* List */
+    .list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .list:empty { display: none; }
+
+    .item {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 0.9rem;
+      padding: 0.95rem 1.1rem;
+      border-top: 1px solid var(--line);
+      animation: rise 220ms var(--ease);
+    }
+
+    .item:first-child { border-top: 0; }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .check {
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      margin: 0;
+      border: 1.5px solid var(--line);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      background: var(--surface);
+      transition: background 140ms var(--ease), border-color 140ms var(--ease);
+    }
+
+    .check::after {
+      content: "";
+      width: 10px;
+      height: 6px;
+      border-left: 2px solid #fff;
+      border-bottom: 2px solid #fff;
+      transform: rotate(-45deg) translate(1px, -1px) scale(0);
+      transition: transform 140ms var(--ease);
+    }
+
+    .check:hover { border-color: var(--accent); }
+
+    .check:checked {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .check:checked::after { transform: rotate(-45deg) translate(1px, -1px) scale(1); }
+
+    .text {
+      font-size: 1rem;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      padding: 0.15rem 0.35rem;
+      margin: -0.15rem -0.35rem;
+      border-radius: 6px;
+      border: 1.5px solid transparent;
+      outline: 0;
+      transition: color 160ms var(--ease);
+    }
+
+    .text[contenteditable="true"] {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .item.done .text {
+      color: var(--muted);
+      text-decoration: line-through;
+      text-decoration-color: var(--line);
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.15rem;
+      opacity: 0;
+      transition: opacity 140ms var(--ease);
+    }
+
+    .item:hover .actions,
+    .item:focus-within .actions {
+      opacity: 1;
+    }
+
+    .actions button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+
+    .actions button:hover { background: var(--paper); color: var(--ink); }
+    .actions button.remove:hover { color: var(--danger); }
+    .actions svg { width: 16px; height: 16px; }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 2.5rem 1rem;
+      font-size: 0.9375rem;
+    }
+
+    .empty[hidden] { display: none; }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8125rem;
+      padding: 1.5rem 1rem 2rem;
+    }
+
+    footer kbd {
+      font-family: inherit;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      padding: 0.05rem 0.4rem;
+      font-size: 0.75rem;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    @media (hover: none) {
+      .actions { opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="head">
+      <p class="date" id="date"></p>
+      <h1 id="summary">Nothing to do yet</h1>
+    </header>
+
+    <form class="entry" id="entry" autocomplete="off">
+      <label for="new-task" class="sr-only" hidden>New task</label>
+      <input id="new-task" type="text" placeholder="Add a task and press Enter" maxlength="200" />
+      <button type="submit">Add</button>
+    </form>
+
+    <div class="bar">
+      <ul class="filters" id="filters" aria-label="Show">
+        <li><button type="button" data-filter="all" aria-pressed="true">All</button></li>
+        <li><button type="button" data-filter="active" aria-pressed="false">Active</button></li>
+        <li><button type="button" data-filter="done" aria-pressed="false">Done</button></li>
+      </ul>
+      <button type="button" class="clear" id="clear" hidden>Clear done</button>
+    </div>
+
+    <ul class="list" id="list" aria-live="polite"></ul>
+    <p class="empty" id="empty">Nothing here yet. Add your first task above.</p>
+  </main>
+
+  <footer>Double-click a task to edit it. Press <kbd>Enter</kbd> to save or <kbd>Esc</kbd> to cancel.</footer>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = "todo.tasks.v1";
+
+      const $ = (sel) => document.querySelector(sel);
+      const entryForm = $("#entry");
+      const input = $("#new-task");
+      const list = $("#list");
+      const empty = $("#empty");
+      const summary = $("#summary");
+      const dateEl = $("#date");
+      const filters = $("#filters");
+      const clearBtn = $("#clear");
+
+      let tasks = load();
+      let filter = "all";
+
+      // ---- Storage (fails gracefully if unavailable) ----
+      function load() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+          return [];
+        }
+      }
+
+      function save() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+        } catch (e) {
+          /* storage unavailable — tasks stay in memory for this session */
+        }
+      }
+
+      // ---- Helpers ----
+      const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+      function todayLabel() {
+        return new Date().toLocaleDateString(undefined, {
+          weekday: "long", day: "numeric", month: "long"
+        });
+      }
+
+      function updateSummary() {
+        const left = tasks.filter((t) => !t.done).length;
+        const total = tasks.length;
+        if (total === 0) summary.textContent = "Nothing to do yet";
+        else if (left === 0) summary.textContent = "All done";
+        else summary.textContent = `${left} ${left === 1 ? "task" : "tasks"} left`;
+        clearBtn.hidden = tasks.every((t) => !t.done);
+      }
+
+      function visibleTasks() {
+        if (filter === "active") return tasks.filter((t) => !t.done);
+        if (filter === "done") return tasks.filter((t) => t.done);
+        return tasks;
+      }
+
+      // ---- Rendering ----
+      const icons = {
+        edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+        remove: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>'
+      };
+
+      function render() {
+        list.innerHTML = "";
+        const items = visibleTasks();
+
+        items.forEach((task) => {
+          const li = document.createElement("li");
+          li.className = "item" + (task.done ? " done" : "");
+          li.dataset.id = task.id;
+
+          const check = document.createElement("input");
+          check.type = "checkbox";
+          check.className = "check";
+          check.checked = task.done;
+          check.setAttribute("aria-label", (task.done ? "Mark not done: " : "Mark done: ") + task.text);
+
+          const text = document.createElement("div");
+          text.className = "text";
+          text.textContent = task.text;
+          text.title = "Double-click to edit";
+
+          const actions = document.createElement("div");
+          actions.className = "actions";
+          actions.innerHTML =
+            `<button type="button" class="edit" aria-label="Edit task">${icons.edit}</button>` +
+            `<button type="button" class="remove" aria-label="Delete task">${icons.remove}</button>`;
+
+          li.append(check, text, actions);
+          list.appendChild(li);
+        });
+
+        if (items.length > 0) {
+          empty.hidden = true;
+        } else {
+          empty.hidden = false;
+          if (tasks.length === 0) empty.textContent = "Nothing here yet. Add your first task above.";
+          else if (filter === "done") empty.textContent = "No finished tasks yet.";
+          else empty.textContent = "Everything's done. Nice work.";
+        }
+
+        updateSummary();
+      }
+
+      // ---- Actions ----
+      function addTask(text) {
+        const clean = text.trim();
+        if (!clean) return;
+        tasks.unshift({ id: uid(), text: clean, done: false });
+        save();
+        render();
+      }
+
+      function toggleTask(id) {
+        const t = tasks.find((x) => x.id === id);
+        if (!t) return;
+        t.done = !t.done;
+        save();
+        render();
+      }
+
+      function removeTask(id) {
+        tasks = tasks.filter((x) => x.id !== id);
+        save();
+        render();
+      }
+
+      function startEdit(li) {
+        const text = li.querySelector(".text");
+        if (text.isContentEditable) return;
+        const original = text.textContent;
+        text.contentEditable = "true";
+        text.focus();
+        // place caret at end
+        const range = document.createRange();
+        range.selectNodeContents(text);
+        range.collapse(false);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        const finish = (commit) => {
+          text.contentEditable = "false";
+          text.removeEventListener("blur", onBlur);
+          text.removeEventListener("keydown", onKey);
+          const t = tasks.find((x) => x.id === li.dataset.id);
+          const next = text.textContent.trim();
+          if (commit && next && t) {
+            t.text = next;
+            save();
+          }
+          render();
+        };
+        const onBlur = () => finish(true);
+        const onKey = (e) => {
+          if (e.key === "Enter") { e.preventDefault(); finish(true); }
+          if (e.key === "Escape") { e.preventDefault(); text.textContent = original; finish(false); }
+        };
+        text.addEventListener("blur", onBlur);
+        text.addEventListener("keydown", onKey);
+      }
+
+      // ---- Events ----
+      entryForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        addTask(input.value);
+        input.value = "";
+        entryForm.classList.remove("has-text");
+        input.focus();
+      });
+
+      input.addEventListener("input", () => {
+        entryForm.classList.toggle("has-text", input.value.trim().length > 0);
+      });
+
+      list.addEventListener("change", (e) => {
+        if (e.target.classList.contains("check")) {
+          toggleTask(e.target.closest(".item").dataset.id);
+        }
+      });
+
+      list.addEventListener("click", (e) => {
+        const li = e.target.closest(".item");
+        if (!li) return;
+        if (e.target.closest(".remove")) removeTask(li.dataset.id);
+        else if (e.target.closest(".edit")) startEdit(li);
+      });
+
+      list.addEventListener("dblclick", (e) => {
+        const li = e.target.closest(".item");
+        if (li && e.target.classList.contains("text")) startEdit(li);
+      });
+
+      filters.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-filter]");
+        if (!btn) return;
+        filter = btn.dataset.filter;
+        filters.querySelectorAll("button").forEach((b) => {
+          b.setAttribute("aria-pressed", String(b === btn));
+        });
+        render();
+      });
+
+      clearBtn.addEventListener("click", () => {
+        tasks = tasks.filter((t) => !t.done);
+        save();
+        render();
+      });
+
+      // ---- Init ----
+      dateEl.textContent = todayLabel();
+      render();
+      input.focus();
+    })();
+  </script>
+</body>
+</html>
